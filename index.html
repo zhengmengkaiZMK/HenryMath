@@ -1,0 +1,983 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>实习老师大冒险 - 数学学习游戏</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Microsoft YaHei', 'PingFang SC', sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; }
+        .hidden { display: none !important; }
+        .game-container { max-width: 900px; margin: 0 auto; padding: 20px; }
+        .card { background: white; border-radius: 20px; padding: 30px; box-shadow: 0 20px 60px rgba(0,0,0,0.3); margin: 20px 0; animation: fadeIn 0.5s ease; }
+        @keyframes fadeIn { from { opacity:0; transform:translateY(20px); } to { opacity:1; transform:translateY(0); } }
+        @keyframes bounce { 0%,100% { transform:scale(1); } 50% { transform:scale(1.1); } }
+        @keyframes shake { 0%,100% { transform:translateX(0); } 25% { transform:translateX(-5px); } 75% { transform:translateX(5px); } }
+        @keyframes starPop { 0% { transform:scale(0); opacity:0; } 50% { transform:scale(1.3); opacity:1; } 100% { transform:scale(1); opacity:1; } }
+        @keyframes confetti { 0% { transform:translateY(0) rotate(0); opacity:1; } 100% { transform:translateY(500px) rotate(720deg); opacity:0; } }
+        @keyframes pulse { 0%,100% { box-shadow: 0 0 0 0 rgba(102,126,234,0.4); } 50% { box-shadow: 0 0 0 15px rgba(102,126,234,0); } }
+        @keyframes drawLine { from { stroke-dashoffset: 1000; } to { stroke-dashoffset: 0; } }
+        @keyframes numberPop { 0% { transform:scale(0); opacity:0; } 60% { transform:scale(1.3); } 100% { transform:scale(1); opacity:1; } }
+        @keyframes slideInLeft { from { transform:translateX(-50px); opacity:0; } to { transform:translateX(0); opacity:1; } }
+        @keyframes slideInRight { from { transform:translateX(50px); opacity:0; } to { transform:translateX(0); opacity:1; } }
+        @keyframes highlightBlink { 0%,100% { background:rgba(255,193,7,0.3); } 50% { background:rgba(255,193,7,0.7); } }
+
+        .title { text-align:center; color:#333; font-size:28px; margin-bottom:20px; }
+        .subtitle { text-align:center; color:#666; font-size:16px; margin-bottom:30px; }
+        .btn { display:inline-block; padding:12px 30px; border:none; border-radius:25px; font-size:18px; font-weight:bold; cursor:pointer; transition:all 0.3s ease; }
+        .btn:hover { transform:translateY(-2px); box-shadow:0 5px 20px rgba(0,0,0,0.2); }
+        .btn-primary { background:linear-gradient(135deg,#667eea,#764ba2); color:white; }
+        .btn-success { background:linear-gradient(135deg,#43e97b,#38f9d7); color:#333; }
+        .btn-warning { background:linear-gradient(135deg,#f093fb,#f5576c); color:white; }
+        .btn-info { background:linear-gradient(135deg,#4facfe,#00f2fe); color:white; }
+
+        #start-screen { text-align:center; padding:50px 20px; }
+        #start-screen .emoji-big { font-size:80px; margin-bottom:20px; animation:bounce 2s infinite; }
+        #start-screen h1 { font-size:36px; color:#333; margin-bottom:10px; }
+        #start-screen p { color:#666; font-size:18px; margin-bottom:30px; line-height:1.8; }
+
+        .progress-bar { width:100%; height:12px; background:#e0e0e0; border-radius:6px; margin:15px 0; overflow:hidden; }
+        .progress-fill { height:100%; background:linear-gradient(90deg,#43e97b,#38f9d7); border-radius:6px; transition:width 0.5s ease; }
+
+        .level-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:15px; margin:20px 0; }
+        .level-item { background:#f8f9fa; border-radius:15px; padding:20px; text-align:center; cursor:pointer; transition:all 0.3s ease; border:3px solid transparent; }
+        .level-item:hover { transform:translateY(-5px); border-color:#667eea; }
+        .level-item.completed { border-color:#43e97b; background:#e8fdf5; }
+        .level-item.locked { opacity:0.5; cursor:not-allowed; }
+        .level-item .level-icon { font-size:40px; margin-bottom:10px; }
+        .level-item .level-name { font-size:14px; color:#333; font-weight:bold; }
+
+        .top-bar { display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; padding:10px 15px; background:rgba(255,255,255,0.9); border-radius:12px; }
+        .score-display { font-size:16px; font-weight:bold; color:#667eea; }
+
+        .question-box { background:linear-gradient(135deg,#f5f7fa,#c3cfe2); border-radius:15px; padding:25px; margin:20px 0; text-align:center; }
+        .question-box h3 { color:#333; font-size:20px; margin-bottom:15px; }
+        .question-box p { color:#555; font-size:16px; line-height:1.6; }
+        .scene-img { font-size:60px; margin:10px 0; display:block; text-align:center; }
+
+        .visual-area { background:#fff; border:2px dashed #ccc; border-radius:15px; padding:20px; margin:20px 0; min-height:150px; display:flex; align-items:center; justify-content:center; flex-direction:column; }
+        .shape-visual { position:relative; margin:20px auto; border:4px solid #667eea; display:flex; align-items:center; justify-content:center; background:rgba(102,126,234,0.1); }
+        .shape-label { position:absolute; font-size:14px; font-weight:bold; color:#667eea; background:white; padding:2px 8px; border-radius:4px; }
+        .shape-label.top { top:-14px; left:50%; transform:translateX(-50%); }
+        .shape-label.left { left:-12px; top:50%; transform:translateY(-50%) rotate(-90deg); }
+
+        .answer-options { display:grid; grid-template-columns:repeat(2,1fr); gap:10px; max-width:500px; margin:20px auto; }
+        .option-btn { padding:15px; border:3px solid #e0e0e0; border-radius:12px; background:white; font-size:16px; cursor:pointer; transition:all 0.3s ease; }
+        .option-btn:hover { border-color:#667eea; background:#f5f0ff; }
+        .option-btn.correct { border-color:#43e97b; background:#e8fdf5; animation:bounce 0.5s; }
+        .option-btn.wrong { border-color:#f5576c; background:#fff5f5; animation:shake 0.5s; }
+
+        .answer-input { width:200px; padding:12px 20px; font-size:20px; border:3px solid #667eea; border-radius:15px; text-align:center; outline:none; }
+        .answer-input:focus { border-color:#764ba2; box-shadow:0 0 15px rgba(102,126,234,0.3); }
+
+        .feedback { padding:15px 25px; border-radius:12px; margin:15px 0; text-align:center; font-size:18px; font-weight:bold; animation:fadeIn 0.3s ease; }
+        .feedback.success { background:#e8fdf5; color:#27ae60; border:2px solid #43e97b; }
+        .feedback.error { background:#fff5f5; color:#e74c3c; border:2px solid #f5576c; }
+        .feedback.info { background:#eef6ff; color:#2980b9; border:2px solid #4facfe; }
+
+        .stars { text-align:center; margin:20px 0; }
+        .star { font-size:40px; display:inline-block; animation:starPop 0.5s forwards; opacity:0; }
+        .star:nth-child(1) { animation-delay:0.2s; }
+        .star:nth-child(2) { animation-delay:0.4s; }
+        .star:nth-child(3) { animation-delay:0.6s; }
+
+        .formula-card { background:linear-gradient(135deg,#a8edea,#fed6e3); border-radius:12px; padding:15px 20px; margin:10px 0; font-size:16px; font-weight:bold; text-align:center; color:#333; }
+        .example-box { background:#f0f8ff; border-left:4px solid #4facfe; border-radius:0 12px 12px 0; padding:12px 18px; margin:8px 0; font-size:14px; color:#555; }
+        .example-box .example-title { font-weight:bold; color:#2980b9; margin-bottom:5px; }
+
+        .tile-grid { display:inline-grid; gap:1px; background:#333; padding:1px; border-radius:5px; }
+        .tile { width:40px; height:40px; background:#f5f5f5; display:flex; align-items:center; justify-content:center; cursor:pointer; transition:all 0.2s; font-size:12px; }
+        .tile.counted { background:#ffb74d; }
+
+        .chat-area { max-height:300px; overflow-y:auto; padding:10px; margin:15px 0; border:1px solid #eee; border-radius:15px; }
+        .chat-bubble { border-radius:15px; padding:15px 20px; margin:10px 0; max-width:85%; animation:fadeIn 0.3s ease; }
+        .chat-bubble.student { background:#e3f2fd; margin-right:auto; border-bottom-left-radius:5px; }
+        .chat-bubble.teacher { background:#e8f5e9; margin-left:auto; border-bottom-right-radius:5px; }
+
+        .hint-box { background:#fff9c4; border:2px solid #ffd54f; border-radius:12px; padding:15px; margin:15px 0; font-size:14px; }
+
+        .certificate { background:linear-gradient(135deg,#ffecd2,#fcb69f); border:3px solid #f093fb; border-radius:20px; padding:30px; text-align:center; margin:20px 0; }
+        .certificate h2 { color:#764ba2; margin-bottom:15px; }
+        .certificate .cert-stamp { font-size:60px; margin:15px 0; }
+
+        .confetti-container { position:fixed; top:0; left:0; width:100%; height:100%; pointer-events:none; z-index:9999; }
+        .confetti-piece { position:absolute; width:10px; height:10px; top:-10px; animation:confetti 3s ease-in forwards; }
+
+        /* 动画讲解样式 */
+        .anim-overlay { position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.7); z-index:10000; display:flex; align-items:center; justify-content:center; animation:fadeIn 0.3s; }
+        .anim-panel { background:white; border-radius:24px; padding:35px; max-width:600px; width:90%; max-height:80vh; overflow-y:auto; animation:fadeIn 0.4s; }
+        .anim-panel h3 { text-align:center; color:#667eea; margin-bottom:20px; font-size:22px; }
+        .anim-step { padding:12px 18px; margin:8px 0; border-radius:12px; background:#f8f9fa; border-left:4px solid #667eea; opacity:0; transform:translateX(-20px); transition:all 0.5s ease; }
+        .anim-step.show { opacity:1; transform:translateX(0); }
+        .anim-step .step-num { display:inline-block; width:28px; height:28px; line-height:28px; text-align:center; background:#667eea; color:white; border-radius:50%; font-size:14px; font-weight:bold; margin-right:10px; }
+        .anim-step .step-text { font-size:16px; color:#333; }
+        .anim-step.highlight { background:#fff3cd; border-left-color:#ffc107; animation:highlightBlink 1s 2; }
+        .anim-result { text-align:center; padding:20px; margin:15px 0; background:linear-gradient(135deg,#e8fdf5,#d4efdf); border-radius:15px; font-size:24px; font-weight:bold; color:#27ae60; opacity:0; transition:all 0.5s; }
+        .anim-result.show { opacity:1; }
+        .anim-shape { text-align:center; margin:15px 0; }
+        .anim-shape svg { max-width:300px; }
+
+        /* 语音按钮 */
+        .voice-btn { background:#667eea; border:none; color:white; width:36px; height:36px; border-radius:50%; font-size:16px; cursor:pointer; margin-left:10px; vertical-align:middle; transition:all 0.3s; }
+        .voice-btn:hover { background:#764ba2; transform:scale(1.1); }
+        .voice-btn.playing { animation:pulse 1s infinite; background:#f5576c; }
+
+        /* 培训情境 */
+        .story-box { background:linear-gradient(135deg,#ffecd2,#fcb69f); border-radius:15px; padding:20px; margin:15px 0; text-align:center; border:2px solid #f093fb; }
+        .story-box .story-char { font-size:50px; margin-bottom:10px; }
+        .story-box .story-text { font-size:15px; color:#5d4037; line-height:1.8; }
+
+        @media (max-width:600px) {
+            .card { padding:20px; } .title { font-size:22px; }
+            .answer-options { grid-template-columns:1fr; }
+            .tile { width:30px; height:30px; }
+            #start-screen h1 { font-size:28px; }
+            .anim-panel { padding:20px; }
+        }
+    </style>
+</head>
+<body>
+<div class="game-container" id="app">
+    <!-- 开始页面 -->
+    <div class="card" id="start-screen">
+        <div class="emoji-big">👨‍🏫</div>
+        <h1>实习老师大冒险</h1>
+        <p>📢 紧急通知！<br>
+        数学王国小学的张老师今天生病了，<br>
+        急需一位实习老师来代课！<br><br>
+        🎉 恭喜你被选中啦！<br>
+        但是在正式走上讲台之前……<br>
+        你需要先通过<strong>上岗培训</strong>！<br><br>
+        🏫 培训通过后，你就能教三年级的小朋友们<br>
+        学习"周长和面积"的知识啦！</p>
+        <button class="btn btn-primary" onclick="startGame()">🚀 接受任务，开始培训！</button>
+    </div>
+
+    <!-- 阶段一：关卡选择 -->
+    <div class="card hidden" id="phase1-screen">
+        <div class="top-bar">
+            <span class="score-display">⭐ 得分: <span id="total-score">0</span></span>
+            <span>📋 上岗培训中</span>
+        </div>
+        <h2 class="title">📚 第一阶段：上岗培训</h2>
+        <div class="story-box">
+            <div class="story-char">🧑‍💼</div>
+            <div class="story-text">校长说："要成为合格的老师，你必须先自己掌握这些知识！<br>完成以下5个培训关卡，才能获得<strong>上岗资格证</strong>哦！"</div>
+        </div>
+        <div class="progress-bar"><div class="progress-fill" id="phase1-progress" style="width:0%"></div></div>
+        <div class="level-grid" id="level-grid"></div>
+    </div>
+
+    <!-- 游戏内容 -->
+    <div class="card hidden" id="game-screen">
+        <div class="top-bar">
+            <span class="score-display">⭐ <span id="game-score">0</span>分</span>
+            <button class="btn btn-info" style="padding:8px 15px;font-size:14px;" onclick="showHint()">💡 提示</button>
+        </div>
+        <div id="game-content"></div>
+    </div>
+
+    <!-- 关卡完成 -->
+    <div class="card hidden" id="level-complete-screen">
+        <h2 class="title">🎉 培训关卡完成！</h2>
+        <div class="stars" id="level-stars"></div>
+        <p class="subtitle" id="level-complete-msg"></p>
+        <div style="text-align:center;">
+            <button class="btn btn-primary" onclick="backToLevels()">继续培训 →</button>
+        </div>
+    </div>
+
+    <!-- 阶段二：教学 -->
+    <div class="card hidden" id="phase2-screen">
+        <h2 class="title">🎓 第二阶段：模拟教学</h2>
+        <p class="subtitle">培训通过了！现在正式走上讲台啦！</p>
+        <div id="teaching-content"></div>
+    </div>
+
+    <!-- 最终结果 -->
+    <div class="card hidden" id="final-screen">
+        <div id="final-content"></div>
+    </div>
+</div>
+<div class="confetti-container" id="confetti-container"></div>
+
+<script>
+// ========== 游戏状态 ==========
+const GS = { score:0, currentLevel:0, levelsCompleted:[false,false,false,false,false], currentQuestion:0, questionsInLevel:[], correctInLevel:0, teachingScore:0 };
+
+// ========== 语音功能 ==========
+function speak(text, callback) {
+    if ('speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+        const u = new SpeechSynthesisUtterance(text);
+        u.lang = 'zh-CN'; u.rate = 0.9; u.pitch = 1.2;
+        // 尝试找一个中文女声
+        const voices = window.speechSynthesis.getVoices();
+        const zhVoice = voices.find(v => v.lang.includes('zh') && v.name.includes('female')) || voices.find(v => v.lang.includes('zh'));
+        if (zhVoice) u.voice = zhVoice;
+        if (callback) u.onend = callback;
+        window.speechSynthesis.speak(u);
+        return true;
+    }
+    return false;
+}
+// 预加载语音
+if ('speechSynthesis' in window) window.speechSynthesis.getVoices();
+
+// ========== 动画讲解功能 ==========
+function showAnimExplain(data) {
+    // data: { title, shape, steps[], result }
+    const overlay = document.createElement('div');
+    overlay.className = 'anim-overlay';
+    overlay.id = 'anim-overlay';
+    
+    let shapeHTML = '';
+    if (data.shape) {
+        shapeHTML = `<div class="anim-shape">${data.shape}</div>`;
+    }
+    
+    overlay.innerHTML = `<div class="anim-panel">
+        <h3>📖 ${data.title}</h3>
+        ${shapeHTML}
+        <div id="anim-steps">${data.steps.map((s,i) => 
+            `<div class="anim-step" id="anim-step-${i}"><span class="step-num">${i+1}</span><span class="step-text">${s}</span></div>`
+        ).join('')}</div>
+        <div class="anim-result" id="anim-result">${data.result}</div>
+        <div style="text-align:center;margin-top:20px">
+            <button class="btn btn-primary" id="anim-close-btn" style="display:none" onclick="closeAnim()">✅ 我学会了！继续答题</button>
+        </div>
+    </div>`;
+    document.body.appendChild(overlay);
+    
+    // 逐步显示动画
+    let delay = 300;
+    data.steps.forEach((_, i) => {
+        setTimeout(() => {
+            const step = document.getElementById(`anim-step-${i}`);
+            if (step) { step.classList.add('show'); if (i === data.steps.length-1) step.classList.add('highlight'); }
+        }, delay);
+        delay += 800;
+    });
+    setTimeout(() => {
+        const r = document.getElementById('anim-result');
+        if (r) r.classList.add('show');
+        const btn = document.getElementById('anim-close-btn');
+        if (btn) btn.style.display = 'inline-block';
+    }, delay + 500);
+}
+
+function closeAnim() {
+    const o = document.getElementById('anim-overlay');
+    if (o) o.remove();
+}
+
+// ========== 关卡配置 ==========
+const levels = [
+    { name:"围栏大师", icon:"🐑", desc:"帮小动物围栏杆，学习周长", topic:"perimeter" },
+    { name:"铺地砖", icon:"🧱", desc:"帮邻居铺地砖，理解面积", topic:"area" },
+    { name:"花园设计师", icon:"🌻", desc:"设计花园，计算面积", topic:"areaCalc" },
+    { name:"神秘侦探", icon:"🔍", desc:"破解谜题，反推数据", topic:"reverse" },
+    { name:"综合挑战", icon:"🏆", desc:"综合运用所有公式", topic:"mixed" }
+];
+
+// ========== 启动 ==========
+function startGame() { hide('start-screen'); show('phase1-screen'); renderLevelGrid(); }
+
+function renderLevelGrid() {
+    const grid = document.getElementById('level-grid');
+    grid.innerHTML = levels.map((lv, i) => {
+        let cls = '';
+        if (GS.levelsCompleted[i]) cls = 'completed';
+        else if (i > 0 && !GS.levelsCompleted[i-1]) cls = 'locked';
+        return `<div class="level-item ${cls}" onclick="startLevel(${i})">
+            <div class="level-icon">${lv.icon}</div>
+            <div class="level-name">${lv.name}</div>
+            <div style="font-size:12px;color:#999;margin-top:5px">${lv.desc}</div>
+            ${GS.levelsCompleted[i] ? '<div style="color:#43e97b;margin-top:5px">✅ 已完成</div>' : ''}
+        </div>`;
+    }).join('');
+    updateProgress();
+}
+
+function updateProgress() {
+    const done = GS.levelsCompleted.filter(x=>x).length;
+    document.getElementById('phase1-progress').style.width = (done/5*100)+'%';
+    document.getElementById('total-score').textContent = GS.score;
+}
+
+function startLevel(i) {
+    if (i > 0 && !GS.levelsCompleted[i-1]) return;
+    if (GS.levelsCompleted[i]) return;
+    GS.currentLevel = i; GS.currentQuestion = 0; GS.correctInLevel = 0;
+    hide('phase1-screen'); show('game-screen');
+    document.getElementById('game-score').textContent = GS.score;
+    loadLevel(i);
+}
+
+function loadLevel(i) {
+    switch(levels[i].topic) {
+        case 'perimeter': loadPerimeter(); break;
+        case 'area': loadArea(); break;
+        case 'areaCalc': loadAreaCalc(); break;
+        case 'reverse': loadReverse(); break;
+        case 'mixed': loadMixed(); break;
+    }
+}
+
+// ========== 关卡1：围栏大师 ==========
+function loadPerimeter() {
+    GS.questionsInLevel = [
+        { type:'rect', l:5, w:3, scene:'王大爷家养了3只小羊🐑，需要用栅栏围一个长5米、宽3米的羊圈。请问需要买多长的栅栏？', sceneImg:'🐑🐑🐑🏡', animal:'🐑' },
+        { type:'rect', l:6, w:4, scene:'小兔子幼儿园要修一个长6米、宽4米的活动操场，四周要装上安全围栏。围栏总共需要多长？', sceneImg:'🐰🏫🌈', animal:'🐰' },
+        { type:'square', s:4, scene:'张阿姨家的鸡要有自己的家！她想围一个边长4米的正方形鸡舍。需要买多长的铁丝网？', sceneImg:'🐔🐔🏠', animal:'🐔' },
+        { type:'square', s:7, scene:'公园里要给天鹅湖围一圈装饰围栏，湖是正方形的，边长7米。需要多长的围栏？', sceneImg:'🦢🌊🌳', animal:'🦢' },
+        { type:'rect', l:8, w:5, scene:'李叔叔的农场要新建一个长8米、宽5米的牛棚，四周需要围木栅栏。木栅栏要多长？', sceneImg:'🐮🌾🚜', animal:'🐮' }
+    ];
+    showPerimeterQ(0);
+}
+
+function showPerimeterQ(qi) {
+    if (qi >= GS.questionsInLevel.length) { completeLevel(); return; }
+    GS.currentQuestion = qi;
+    const q = GS.questionsInLevel[qi];
+    let answer, formula, example, hintText, vW, vH;
+    if (q.type === 'rect') {
+        answer = (q.l + q.w) * 2;
+        formula = '长方形周长 =（长＋宽）× 2';
+        example = `比如一个长4米、宽2米的长方形，周长 =（4＋2）× 2 = 12米，就像绕着它走一圈的距离！`;
+        hintText = `（${q.l}＋${q.w}）× 2 = ${q.l+q.w} × 2 = ${answer}米`;
+        vW = q.l * 28; vH = q.w * 28;
+    } else {
+        answer = q.s * 4;
+        formula = '正方形周长 = 边长 × 4';
+        example = `比如一个边长3米的正方形，周长 = 3 × 4 = 12米，因为四条边一样长！`;
+        hintText = `${q.s} × 4 = ${answer}米`;
+        vW = q.s * 28; vH = q.s * 28;
+    }
+    const opts = genOptions(answer);
+    const cnt = document.getElementById('game-content');
+    cnt.innerHTML = `
+        <h3 style="text-align:center;margin-bottom:10px">🐑 关卡1：围栏大师 (${qi+1}/${GS.questionsInLevel.length})</h3>
+        <div class="story-box" style="background:linear-gradient(135deg,#e3f2fd,#bbdefb);border-color:#64b5f6">
+            <div class="story-char">🧑‍💼</div>
+            <div class="story-text">培训导师说："好老师要会算周长！先帮这些小动物把围栏围好吧！"</div>
+        </div>
+        <div class="formula-card">📐 ${formula}</div>
+        <div class="example-box"><div class="example-title">💡 举个例子：</div>${example}</div>
+        <div class="question-box">
+            <div class="scene-img">${q.sceneImg}</div>
+            <h3>第${qi+1}题</h3>
+            <p>${q.scene}</p>
+        </div>
+        <div class="visual-area">
+            <div class="shape-visual" style="width:${vW}px;height:${vH}px;">
+                <span style="font-size:30px">${q.animal}</span>
+                <span class="shape-label top">${q.type==='rect'?q.l:q.s}米</span>
+                <span class="shape-label left">${q.type==='rect'?q.w:q.s}米</span>
+            </div>
+        </div>
+        <div class="answer-options">${opts.map(o=>`<button class="option-btn" onclick="checkPerimeter(${o},${answer},this,${qi})">${o}米</button>`).join('')}</div>
+        <div id="feedback-area"></div>
+        <div class="hint-box hidden" id="hint-box">💡 ${hintText}</div>
+    `;
+}
+
+function checkPerimeter(selected, correct, btn, qi) {
+    const btns = document.querySelectorAll('.option-btn');
+    btns.forEach(b => b.style.pointerEvents = 'none');
+    if (selected === correct) {
+        btn.classList.add('correct');
+        GS.correctInLevel++; GS.score += 20;
+        document.getElementById('game-score').textContent = GS.score;
+        showFB('✅ 回答正确！太聪明了！','success');
+        setTimeout(() => showPerimeterQ(qi+1), 1500);
+    } else {
+        btn.classList.add('wrong');
+        showFB('❌ 不太对哦，让我来教你正确的算法！','error');
+        const q = GS.questionsInLevel[qi];
+        let steps, shape, result;
+        if (q.type === 'rect') {
+            shape = `<div style="display:inline-block;border:3px solid #667eea;width:${q.l*20}px;height:${q.w*20}px;position:relative;margin:10px">
+                <span style="position:absolute;top:-18px;left:50%;transform:translateX(-50%);font-size:13px;color:#667eea;font-weight:bold">${q.l}米</span>
+                <span style="position:absolute;left:-25px;top:50%;transform:translateY(-50%) rotate(-90deg);font-size:13px;color:#667eea;font-weight:bold">${q.w}米</span>
+                <span style="position:absolute;bottom:-18px;left:50%;transform:translateX(-50%);font-size:13px;color:#e74c3c;font-weight:bold">${q.l}米</span>
+                <span style="position:absolute;right:-25px;top:50%;transform:translateY(-50%) rotate(90deg);font-size:13px;color:#e74c3c;font-weight:bold">${q.w}米</span>
+            </div>`;
+            steps = [
+                `长方形有4条边：上边 ${q.l}米，下边 ${q.l}米，左边 ${q.w}米，右边 ${q.w}米`,
+                `先算一组：长＋宽 = ${q.l} + ${q.w} = ${q.l+q.w}米`,
+                `长方形有2组这样的边，所以要乘2`,
+                `周长 =（${q.l} + ${q.w}）× 2 = ${q.l+q.w} × 2 = <strong>${correct}米</strong>`
+            ];
+        } else {
+            shape = `<div style="display:inline-block;border:3px solid #667eea;width:${q.s*20}px;height:${q.s*20}px;position:relative;margin:10px">
+                <span style="position:absolute;top:-18px;left:50%;transform:translateX(-50%);font-size:13px;color:#667eea;font-weight:bold">${q.s}米</span>
+                <span style="position:absolute;left:-25px;top:50%;transform:translateY(-50%) rotate(-90deg);font-size:13px;color:#667eea;font-weight:bold">${q.s}米</span>
+            </div>`;
+            steps = [
+                `正方形四条边一样长，每条都是 ${q.s}米`,
+                `周长就是4条边加起来`,
+                `周长 = ${q.s} × 4 = <strong>${correct}米</strong>`
+            ];
+        }
+        result = `✅ 答案是 ${correct}米！`;
+        setTimeout(() => {
+            showAnimExplain({ title:'围栏周长怎么算？', shape, steps, result });
+        }, 800);
+        setTimeout(() => { btns.forEach(b => { b.style.pointerEvents='auto'; b.classList.remove('wrong'); }); }, 1000);
+    }
+}
+
+// ========== 关卡2：铺地砖 ==========
+function loadArea() {
+    GS.questionsInLevel = [
+        { rows:3, cols:4, scene:'隔壁张阿姨家装修厨房，厨房地面长4米、宽3米，需要用1平方米的地砖铺满。她需要买多少块地砖？', sceneImg:'🏠🔨👷' },
+        { rows:2, cols:5, scene:'学校门口的小卖部，地面长5米、宽2米，要铺新地砖。需要几块1平方米的地砖？', sceneImg:'🏪🧹✨' },
+        { rows:4, cols:4, scene:'妈妈要给你的房间铺地毯，房间是正方形的，边长4米。地毯需要多少块1平方米的？', sceneImg:'🛏️🧸🎮' },
+        { rows:3, cols:6, scene:'三年级教室要翻新地板，教室长6米、宽3米。工人叔叔需要搬多少块地砖来？', sceneImg:'🏫📚✏️' }
+    ];
+    window._tileCount = 0;
+    showAreaQ(0);
+}
+
+function showAreaQ(qi) {
+    if (qi >= GS.questionsInLevel.length) { completeLevel(); return; }
+    GS.currentQuestion = qi;
+    window._tileCount = 0;
+    const q = GS.questionsInLevel[qi];
+    const answer = q.rows * q.cols;
+    let tiles = '';
+    for (let r=0; r<q.rows; r++)
+        for (let c=0; c<q.cols; c++)
+            tiles += `<div class="tile" onclick="clickTile(this)"></div>`;
+    
+    const formula = '面积 = 长 × 宽（数一数能铺多少块1平方米的砖）';
+    const example = `比如一个长3米、宽2米的地面，能铺3×2=6块地砖，面积就是6平方米。就像数格子一样！`;
+    
+    document.getElementById('game-content').innerHTML = `
+        <h3 style="text-align:center;margin-bottom:10px">🧱 关卡2：铺地砖 (${qi+1}/${GS.questionsInLevel.length})</h3>
+        <div class="story-box" style="background:linear-gradient(135deg,#fff3e0,#ffe0b2);border-color:#ffb74d">
+            <div class="story-char">🧑‍💼</div>
+            <div class="story-text">培训导师说："面积是什么？就是能铺多少块地砖！动手数一数吧！"</div>
+        </div>
+        <div class="formula-card">📐 ${formula}</div>
+        <div class="example-box"><div class="example-title">💡 举个例子：</div>${example}</div>
+        <div class="question-box">
+            <div class="scene-img">${q.sceneImg}</div>
+            <h3>第${qi+1}题</h3>
+            <p>${q.scene}</p>
+        </div>
+        <div class="visual-area">
+            <p style="margin-bottom:10px">地面：长${q.cols}米 × 宽${q.rows}米</p>
+            <div class="tile-grid" style="grid-template-columns:repeat(${q.cols},40px)">${tiles}</div>
+            <p style="margin-top:10px;color:#888">已点击: <span id="tile-count">0</span> 块</p>
+        </div>
+        <div style="text-align:center;margin:20px 0">
+            <p style="margin-bottom:10px">需要多少块地砖？（面积是多少平方米？）</p>
+            <input type="number" class="answer-input" id="area-answer" placeholder="?">
+            <br><br>
+            <button class="btn btn-success" onclick="checkAreaAns(${answer},${qi})">✅ 确认</button>
+        </div>
+        <div id="feedback-area"></div>
+        <div class="hint-box hidden" id="hint-box">💡 面积 = ${q.cols} × ${q.rows} = ${answer} 平方米</div>
+    `;
+}
+
+function clickTile(el) {
+    if (!el.classList.contains('counted')) {
+        el.classList.add('counted');
+        el.textContent = ++window._tileCount;
+        document.getElementById('tile-count').textContent = window._tileCount;
+    }
+}
+
+function checkAreaAns(correct, qi) {
+    const v = parseInt(document.getElementById('area-answer').value);
+    if (isNaN(v)) { showFB('请输入数字哦！','info'); return; }
+    if (v === correct) {
+        GS.correctInLevel++; GS.score += 20;
+        document.getElementById('game-score').textContent = GS.score;
+        showFB(`✅ 太棒了！需要 ${correct} 块地砖，面积是 ${correct} 平方米！`,'success');
+        setTimeout(()=> showAreaQ(qi+1), 1500);
+    } else {
+        showFB('❌ 不太对，让我来教你怎么算！','error');
+        const q = GS.questionsInLevel[qi];
+        setTimeout(() => {
+            showAnimExplain({
+                title:'面积怎么算？',
+                shape:`<div style="display:inline-grid;grid-template-columns:repeat(${q.cols},30px);gap:2px;padding:5px;background:#eee;border-radius:8px">${Array(q.rows*q.cols).fill('<div style="width:30px;height:30px;background:#ffb74d;border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:10px">1m²</div>').join('')}</div>`,
+                steps:[
+                    `地面长${q.cols}米、宽${q.rows}米`,
+                    `每一行能铺 ${q.cols} 块地砖`,
+                    `一共有 ${q.rows} 行`,
+                    `所以总共需要：${q.cols} × ${q.rows} = <strong>${correct}块</strong>`,
+                    `面积 = ${q.cols} × ${q.rows} = <strong>${correct} 平方米</strong>`
+                ],
+                result:`✅ 答案是 ${correct} 平方米！`
+            });
+        }, 800);
+    }
+}
+
+// ========== 关卡3：花园设计师 ==========
+function loadAreaCalc() {
+    GS.questionsInLevel = [
+        { type:'rect', l:6, w:4, scene:'小区里要新建一个长6米、宽4米的花坛，园丁叔叔要知道花坛面积才能买够花种。面积是多少？', sceneImg:'🌷🌻🌹' },
+        { type:'square', s:5, scene:'学校门口有一块边长5米的正方形空地，要种满草皮。需要多大面积的草皮？', sceneImg:'🌿🏫🌱' },
+        { type:'rect', l:9, w:3, scene:'公园里有一条长9米、宽3米的石子小路，要铺鹅卵石。需要铺多大面积？', sceneImg:'🌳🛤️🪨' },
+        { type:'square', s:8, scene:'体育老师要在操场上画一个边长8米的正方形跳绳区域。这个区域面积是多少？', sceneImg:'🏃‍♂️⭕🎽' },
+        { type:'rect', l:7, w:5, scene:'夏天到了！社区要建一个长7米、宽5米的游泳池。水面面积是多少？', sceneImg:'🏊‍♂️🌊☀️' }
+    ];
+    showAreaCalcQ(0);
+}
+
+function showAreaCalcQ(qi) {
+    if (qi >= GS.questionsInLevel.length) { completeLevel(); return; }
+    GS.currentQuestion = qi;
+    const q = GS.questionsInLevel[qi];
+    let answer, formula, example, hintText, vW, vH;
+    if (q.type === 'rect') {
+        answer = q.l * q.w;
+        formula = '长方形面积 = 长 × 宽';
+        example = `比如课桌长1.2米、宽0.6米，面积=1.2×0.6=0.72平方米，这就是课桌表面的大小！`;
+        hintText = `${q.l} × ${q.w} = ${answer} 平方米`;
+        vW = q.l*24; vH = q.w*24;
+    } else {
+        answer = q.s * q.s;
+        formula = '正方形面积 = 边长 × 边长';
+        example = `比如一块边长2米的正方形地毯，面积=2×2=4平方米，能铺4块1平方米的小砖！`;
+        hintText = `${q.s} × ${q.s} = ${answer} 平方米`;
+        vW = q.s*24; vH = q.s*24;
+    }
+    const opts = genOptions(answer);
+    document.getElementById('game-content').innerHTML = `
+        <h3 style="text-align:center;margin-bottom:10px">🌻 关卡3：花园设计师 (${qi+1}/${GS.questionsInLevel.length})</h3>
+        <div class="story-box" style="background:linear-gradient(135deg,#e8f5e9,#c8e6c9);border-color:#66bb6a">
+            <div class="story-char">🧑‍💼</div>
+            <div class="story-text">培训导师说："会算面积，就能设计花园、铺地板、建游泳池！来试试吧！"</div>
+        </div>
+        <div class="formula-card">📐 ${formula}</div>
+        <div class="example-box"><div class="example-title">💡 举个例子：</div>${example}</div>
+        <div class="question-box">
+            <div class="scene-img">${q.sceneImg}</div>
+            <h3>第${qi+1}题</h3>
+            <p>${q.scene}</p>
+        </div>
+        <div class="visual-area">
+            <div class="shape-visual" style="width:${vW}px;height:${vH}px;background:rgba(67,233,123,0.2);border-color:#43e97b">
+                <span style="font-size:20px">🌻</span>
+                <span class="shape-label top">${q.type==='rect'?q.l:q.s}米</span>
+                <span class="shape-label left">${q.type==='rect'?q.w:q.s}米</span>
+            </div>
+        </div>
+        <div class="answer-options">${opts.map(o=>`<button class="option-btn" onclick="checkAreaCalc(${o},${answer},this,${qi})">${o}平方米</button>`).join('')}</div>
+        <div id="feedback-area"></div>
+        <div class="hint-box hidden" id="hint-box">💡 ${hintText}</div>
+    `;
+}
+
+function checkAreaCalc(selected, correct, btn, qi) {
+    const btns = document.querySelectorAll('.option-btn');
+    btns.forEach(b => b.style.pointerEvents = 'none');
+    if (selected === correct) {
+        btn.classList.add('correct');
+        GS.correctInLevel++; GS.score += 20;
+        document.getElementById('game-score').textContent = GS.score;
+        showFB('✅ 回答正确！太聪明了！','success');
+        setTimeout(() => showAreaCalcQ(qi+1), 1500);
+    } else {
+        btn.classList.add('wrong');
+        showFB('❌ 不太对哦，看看正确的计算方法！','error');
+        const q = GS.questionsInLevel[qi];
+        let steps;
+        if (q.type === 'rect') {
+            steps = [`这是一个长方形，长=${q.l}米，宽=${q.w}米`,`面积公式：长 × 宽`,`面积 = ${q.l} × ${q.w} = <strong>${correct} 平方米</strong>`];
+        } else {
+            steps = [`这是一个正方形，边长=${q.s}米`,`面积公式：边长 × 边长`,`面积 = ${q.s} × ${q.s} = <strong>${correct} 平方米</strong>`];
+        }
+        setTimeout(() => { showAnimExplain({ title:'面积怎么算？', shape:'', steps, result:`✅ 答案是 ${correct} 平方米！` }); }, 800);
+        setTimeout(() => { btns.forEach(b => { b.style.pointerEvents='auto'; b.classList.remove('wrong'); }); }, 1000);
+    }
+}
+
+// ========== 关卡4：神秘侦探 ==========
+function loadReverse() {
+    GS.questionsInLevel = [
+        { type:'findW_p', P:20, l:6, scene:'警察叔叔在调查一个长方形花圃的尺寸。已知花圃周长20米，长6米。请帮忙推算宽是多少？', sceneImg:'🔍🕵️‍♂️🌸' },
+        { type:'findL_p', P:24, w:4, scene:'小区保安发现围墙损坏，围墙围成长方形，周长24米，宽4米。要修长边，长是多少？', sceneImg:'🧱🔧👮' },
+        { type:'findS', P:28, scene:'妈妈买了28米的彩灯带，刚好围了正方形阳台一圈。阳台边长是多少？', sceneImg:'💡🏠✨' },
+        { type:'findW_a', A:30, l:6, scene:'爸爸说书房面积30平方米，长6米。要买地毯，宽是多少米才能铺满？', sceneImg:'📚🏠🧮' },
+        { type:'findL_a', A:48, w:8, scene:'学校新教室面积48平方米，宽8米。要安装黑板在长边，长是多少米？', sceneImg:'🏫📏✏️' }
+    ];
+    showReverseQ(0);
+}
+
+function showReverseQ(qi) {
+    if (qi >= GS.questionsInLevel.length) { completeLevel(); return; }
+    GS.currentQuestion = qi;
+    const q = GS.questionsInLevel[qi];
+    let answer, formula, example, hintText, visual;
+    
+    if (q.type === 'findW_p') {
+        answer = q.P/2 - q.l;
+        formula = '宽 = 周长 ÷ 2 - 长';
+        example = '比如周长=16米，长=5米，那宽=16÷2-5=8-5=3米';
+        hintText = `${q.P}÷2 - ${q.l} = ${q.P/2} - ${q.l} = ${answer}米`;
+        visual = makeShapeVis(q.l*22, answer*22, q.l+'米', '?米', `周长=${q.P}米`);
+    } else if (q.type === 'findL_p') {
+        answer = q.P/2 - q.w;
+        formula = '长 = 周长 ÷ 2 - 宽';
+        example = '比如周长=18米，宽=3米，那长=18÷2-3=9-3=6米';
+        hintText = `${q.P}÷2 - ${q.w} = ${q.P/2} - ${q.w} = ${answer}米`;
+        visual = makeShapeVis(answer*22, q.w*22, '?米', q.w+'米', `周长=${q.P}米`);
+    } else if (q.type === 'findS') {
+        answer = q.P/4;
+        formula = '正方形边长 = 周长 ÷ 4';
+        example = '比如周长=20米，边长=20÷4=5米，因为正方形有4条相等的边';
+        hintText = `${q.P}÷4 = ${answer}米`;
+        visual = makeShapeVis(answer*22, answer*22, '?米', '?米', `周长=${q.P}米`);
+    } else if (q.type === 'findW_a') {
+        answer = q.A/q.l;
+        formula = '宽 = 面积 ÷ 长';
+        example = '比如面积=12平方米，长=4米，那宽=12÷4=3米';
+        hintText = `${q.A}÷${q.l} = ${answer}米`;
+        visual = makeShapeVis(q.l*22, answer*22, q.l+'米', '?米', `面积=${q.A}m²`);
+    } else {
+        answer = q.A/q.w;
+        formula = '长 = 面积 ÷ 宽';
+        example = '比如面积=20平方米，宽=4米，那长=20÷4=5米';
+        hintText = `${q.A}÷${q.w} = ${answer}米`;
+        visual = makeShapeVis(answer*22, q.w*22, '?米', q.w+'米', `面积=${q.A}m²`);
+    }
+    
+    const opts = genOptions(answer);
+    document.getElementById('game-content').innerHTML = `
+        <h3 style="text-align:center;margin-bottom:10px">🔍 关卡4：神秘侦探 (${qi+1}/${GS.questionsInLevel.length})</h3>
+        <div class="story-box" style="background:linear-gradient(135deg,#ede7f6,#d1c4e9);border-color:#9575cd">
+            <div class="story-char">🧑‍💼</div>
+            <div class="story-text">培训导师说："当老师经常需要反过来推算！像侦探一样找出隐藏的数字！"</div>
+        </div>
+        <div class="formula-card">📐 ${formula}</div>
+        <div class="example-box"><div class="example-title">💡 举个例子：</div>${example}</div>
+        <div class="question-box">
+            <div class="scene-img">${q.sceneImg}</div>
+            <h3>第${qi+1}题</h3>
+            <p>${q.scene}</p>
+        </div>
+        ${visual}
+        <div class="answer-options">${opts.map(o=>`<button class="option-btn" onclick="checkReverse(${o},${answer},this,${qi})">${o}米</button>`).join('')}</div>
+        <div id="feedback-area"></div>
+        <div class="hint-box hidden" id="hint-box">💡 ${hintText}</div>
+    `;
+}
+
+function checkReverse(selected, correct, btn, qi) {
+    const btns = document.querySelectorAll('.option-btn');
+    btns.forEach(b => b.style.pointerEvents = 'none');
+    if (selected === correct) {
+        btn.classList.add('correct');
+        GS.correctInLevel++; GS.score += 20;
+        document.getElementById('game-score').textContent = GS.score;
+        showFB('✅ 侦探推理成功！','success');
+        setTimeout(() => showReverseQ(qi+1), 1500);
+    } else {
+        btn.classList.add('wrong');
+        showFB('❌ 推理有误，看看正确的思路！','error');
+        const q = GS.questionsInLevel[qi];
+        let steps;
+        if (q.type==='findW_p') steps=[`已知周长=${q.P}米，长=${q.l}米`,`先算半周长：${q.P}÷2=${q.P/2}米`,`宽=半周长-长=${q.P/2}-${q.l}=<strong>${correct}米</strong>`];
+        else if (q.type==='findL_p') steps=[`已知周长=${q.P}米，宽=${q.w}米`,`先算半周长：${q.P}÷2=${q.P/2}米`,`长=半周长-宽=${q.P/2}-${q.w}=<strong>${correct}米</strong>`];
+        else if (q.type==='findS') steps=[`已知周长=${q.P}米`,`正方形4条边一样长`,`边长=周长÷4=${q.P}÷4=<strong>${correct}米</strong>`];
+        else if (q.type==='findW_a') steps=[`已知面积=${q.A}平方米，长=${q.l}米`,`面积=长×宽，所以宽=面积÷长`,`宽=${q.A}÷${q.l}=<strong>${correct}米</strong>`];
+        else steps=[`已知面积=${q.A}平方米，宽=${q.w}米`,`面积=长×宽，所以长=面积÷宽`,`长=${q.A}÷${q.w}=<strong>${correct}米</strong>`];
+        setTimeout(() => { showAnimExplain({ title:'侦探推理过程', shape:'', steps, result:`✅ 答案是 ${correct}米！` }); }, 800);
+        setTimeout(() => { btns.forEach(b => { b.style.pointerEvents='auto'; b.classList.remove('wrong'); }); }, 1000);
+    }
+}
+
+function makeShapeVis(w, h, topLabel, leftLabel, centerText) {
+    return `<div class="visual-area"><div class="shape-visual" style="width:${w}px;height:${h}px"><span style="font-size:14px;color:#667eea">${centerText}</span><span class="shape-label top">${topLabel}</span><span class="shape-label left">${leftLabel}</span></div></div>`;
+}
+
+// ========== 关卡5：综合挑战 ==========
+function loadMixed() {
+    GS.questionsInLevel = [
+        { text:'学校操场是长方形的，长50米、宽30米。体育课跑一圈是多少米？', ans:160, unit:'米', hint:'(50+30)×2=160米', sceneImg:'🏃‍♂️🏟️🎽', example:'周长=(长+宽)×2' },
+        { text:'奶奶织了一块正方形桌布，边长2米。这块桌布的面积是多少？', ans:4, unit:'平方米', hint:'2×2=4平方米', sceneImg:'🧶👵🍽️', example:'正方形面积=边长×边长' },
+        { text:'教室前面的黑板长4米、宽1米。黑板的面积是多少？', ans:4, unit:'平方米', hint:'4×1=4平方米', sceneImg:'📝🏫👨‍🏫', example:'长方形面积=长×宽' },
+        { text:'公园的正方形喷水池，围了一圈36米的装饰灯带。喷水池边长是多少？', ans:9, unit:'米', hint:'36÷4=9米', sceneImg:'⛲🌳💡', example:'边长=周长÷4' },
+        { text:'爸爸的书房面积42平方米，长7米。书柜要放在短边，短边（宽）是多少？', ans:6, unit:'米', hint:'42÷7=6米', sceneImg:'📚🏠📏', example:'宽=面积÷长' },
+        { text:'妈妈要给阳台装护栏，阳台是长方形，周长30米，宽5米。长是多少米？', ans:10, unit:'米', hint:'30÷2-5=10米', sceneImg:'🌺🏠🔧', example:'长=周长÷2-宽' }
+    ];
+    showMixedQ(0);
+}
+
+function showMixedQ(qi) {
+    if (qi >= GS.questionsInLevel.length) { completeLevel(); return; }
+    GS.currentQuestion = qi;
+    const q = GS.questionsInLevel[qi];
+    const opts = genOptions(q.ans);
+    document.getElementById('game-content').innerHTML = `
+        <h3 style="text-align:center;margin-bottom:10px">🏆 关卡5：综合挑战 (${qi+1}/${GS.questionsInLevel.length})</h3>
+        <div class="story-box" style="background:linear-gradient(135deg,#fce4ec,#f8bbd0);border-color:#f06292">
+            <div class="story-char">🧑‍💼</div>
+            <div class="story-text">培训导师说："最后一关！把所有学过的公式综合运用起来，通过就能拿到上岗证！"</div>
+        </div>
+        <div class="formula-card">📐 提示公式：${q.example}</div>
+        <div class="question-box">
+            <div class="scene-img">${q.sceneImg}</div>
+            <h3>第${qi+1}题</h3>
+            <p style="font-size:18px">${q.text}</p>
+        </div>
+        <div class="answer-options">${opts.map(o=>`<button class="option-btn" onclick="checkMixed(${o},${q.ans},this,${qi})">${o}${q.unit}</button>`).join('')}</div>
+        <div id="feedback-area"></div>
+        <div class="hint-box hidden" id="hint-box">💡 ${q.hint}</div>
+    `;
+}
+
+function checkMixed(selected, correct, btn, qi) {
+    const btns = document.querySelectorAll('.option-btn');
+    btns.forEach(b => b.style.pointerEvents = 'none');
+    if (selected === correct) {
+        btn.classList.add('correct');
+        GS.correctInLevel++; GS.score += 20;
+        document.getElementById('game-score').textContent = GS.score;
+        showFB('✅ 回答正确！太聪明了！','success');
+        setTimeout(() => showMixedQ(qi+1), 1500);
+    } else {
+        btn.classList.add('wrong');
+        showFB('❌ 再想想！看看动画讲解~','error');
+        const q = GS.questionsInLevel[qi];
+        setTimeout(() => {
+            showAnimExplain({ title:'综合题解析', shape:'', steps:[`题目信息：${q.text}`,`使用公式：${q.example}`,`计算过程：${q.hint}`,`答案是 <strong>${correct}${q.unit}</strong>`], result:`✅ ${q.hint}` });
+        }, 800);
+        setTimeout(() => { btns.forEach(b => { b.style.pointerEvents='auto'; b.classList.remove('wrong'); }); }, 1000);
+    }
+}
+
+// ========== 关卡完成 ==========
+function completeLevel() {
+    const total = GS.questionsInLevel.length;
+    const stars = GS.correctInLevel === total ? 3 : GS.correctInLevel >= total*0.6 ? 2 : 1;
+    GS.levelsCompleted[GS.currentLevel] = true;
+    hide('game-screen'); show('level-complete-screen');
+    document.getElementById('level-stars').innerHTML = 
+        '⭐'.repeat(stars).split('').map(s=>`<span class="star">${s}</span>`).join('') +
+        '☆'.repeat(3-stars).split('').map(s=>`<span class="star">${s}</span>`).join('');
+    const msg = stars===3 ? '🎉 完美通关！培训表现优秀！' : stars===2 ? '👍 不错！基本掌握了！' : '💪 加油，再练练！';
+    let extra = '';
+    if (GS.levelsCompleted.every(x=>x)) extra = '<br><br>🎓 <strong>恭喜！所有培训关卡已通过！校长批准你上岗啦！</strong>';
+    document.getElementById('level-complete-msg').innerHTML = msg + extra;
+    if (stars === 3) createConfetti();
+}
+
+function backToLevels() {
+    hide('level-complete-screen');
+    if (GS.levelsCompleted.every(x=>x)) { startPhase2(); }
+    else { show('phase1-screen'); renderLevelGrid(); }
+}
+
+// ========== 第二阶段：模拟教学 ==========
+const students = [
+    { name:'小明', emoji:'👦', style:'爱问"为什么"', voicePitch:1.3 },
+    { name:'小红', emoji:'👧', style:'爱问"怎么算"', voicePitch:1.5 },
+    { name:'小强', emoji:'🧑', style:'爱问"如果变了呢"', voicePitch:1.1 }
+];
+
+const teachQs = [
+    [ // 小明
+        { q:'老师老师！为什么长方形周长要乘以2呢？我搞不懂为什么不是乘4呀？',
+          opts:['因为长方形有2条长和2条宽，(长+宽)只算了一组，要×2才是完整一圈','因为2是幸运数字','数学课本规定的，记住就行','我也不太清楚'], c:0,
+          exp:'长方形有4条边，(长+宽)只算了一半，所以要×2才是绕一整圈的距离！' },
+        { q:'老师，面积和周长到底有什么区别呀？我总是搞混！',
+          opts:['周长是围一圈的总长度，面积是里面铺满的大小，一个是线一个是面','它们其实差不多的','周长总是比面积大','面积就是用尺子量边的长度'], c:0,
+          exp:'周长是外面走一圈的距离（用米），面积是里面能铺多少格子（用平方米）！一个量边线，一个量里面！' }
+    ],
+    [ // 小红
+        { q:'老师，我家客厅长8米宽3米，妈妈让我算面积好买地毯，我该怎么算呀？',
+          opts:['用面积公式：长×宽=8×3=24平方米','要算周长：(8+3)×2=22米','把所有数字加起来：8+3=11平方米','8×4=32平方米'], c:0,
+          exp:'长方形面积=长×宽=8×3=24平方米！买24平方米的地毯就够了！' },
+        { q:'老师，我量了绳子一圈是20米，围成了正方形，每条边多长呀？',
+          opts:['正方形4条边一样长，边长=20÷4=5米','20÷2=10米','20×4=80米','20-4=16米'], c:0,
+          exp:'正方形4条边一样长，边长=周长÷4=20÷4=5米！每条边5米长！' }
+    ],
+    [ // 小强
+        { q:'老师我想到一个问题！如果长方形周长不变是20米，把长从6米变成7米，宽会变成多少？',
+          opts:['宽从4变成3！因为长+宽必须等于10，长变大宽就变小','宽也会变大','宽还是4不变','没办法算出来'], c:0,
+          exp:'周长=20不变，所以长+宽=10。长从6→7，宽就从4→3！长变大宽就缩小，总和不变！' },
+        { q:'老师！正方形和长方形周长都是16米，谁的面积更大呀？',
+          opts:['正方形更大！正方形边长4面积=16，长方形如5×3=15更小','长方形面积大','一样大','没法比较'], c:0,
+          exp:'正方形边长=4，面积=16。长方形如5×3=15或6×2=12，都比16小！周长相同时正方形面积最大！' }
+    ]
+];
+
+let curStu = 0, curStuQ = 0;
+
+function startPhase2() {
+    hide('phase1-screen'); hide('level-complete-screen'); show('phase2-screen');
+    GS.teachingScore = 0;
+    showTeachIntro();
+}
+
+function showTeachIntro() {
+    document.getElementById('teaching-content').innerHTML = `
+        <div class="visual-area" style="border:none;background:#f8f9fa">
+            <span style="font-size:60px">🏫</span>
+            <h3 style="margin:15px 0">叮铃铃～上课铃响了！</h3>
+            <p>你走进三年级（1）班，学生们正睁着好奇的大眼睛看着你！<br>他们要学习"周长和面积"的知识，认真回答他们的问题吧！</p>
+            <p style="margin-top:10px;color:#999;font-size:14px">🔊 学生的提问会用语音播放哦！</p>
+        </div>
+        <div style="display:flex;justify-content:center;gap:30px;margin:20px 0;flex-wrap:wrap">
+            ${students.map(s=>`<div style="text-align:center"><div style="font-size:50px">${s.emoji}</div><div style="font-weight:bold;margin-top:5px">${s.name}</div><div style="font-size:12px;color:#666">${s.style}</div></div>`).join('')}
+        </div>
+        <div style="text-align:center"><button class="btn btn-primary" onclick="beginTeach()">📖 开始上课！</button></div>
+    `;
+}
+
+function beginTeach() { curStu = 0; curStuQ = 0; showStuQ(); }
+
+function showStuQ() {
+    if (curStu >= students.length) { showTeachResult(); return; }
+    if (curStuQ >= teachQs[curStu].length) { curStu++; curStuQ=0; showStuQ(); return; }
+    
+    const s = students[curStu], q = teachQs[curStu][curStuQ];
+    document.getElementById('teaching-content').innerHTML = `
+        <div style="text-align:center;margin-bottom:15px">
+            <span style="font-size:50px">${s.emoji}</span>
+            <h3>${s.name} 举手提问 <button class="voice-btn" id="voice-btn" onclick="playVoice('${q.q.replace(/'/g,"\\'")}',this)">🔊</button></h3>
+            <span style="font-size:13px;color:#666;background:#f0f0f0;padding:3px 10px;border-radius:10px">${s.style}</span>
+        </div>
+        <div class="chat-area" id="chat-area">
+            <div class="chat-bubble student"><strong>${s.name}：</strong>${q.q}</div>
+        </div>
+        <p style="text-align:center;margin:15px 0;color:#666">选择你的回答：</p>
+        <div class="answer-options" id="teach-opts">
+            ${q.opts.map((o,i)=>`<button class="option-btn" onclick="answerStu(${i})">${o}</button>`).join('')}
+        </div>
+        <div id="feedback-area"></div>
+    `;
+    // 自动播放语音
+    setTimeout(() => playVoice(q.q, document.getElementById('voice-btn')), 500);
+}
+
+function playVoice(text, btn) {
+    if (btn) { btn.classList.add('playing'); }
+    if ('speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+        const u = new SpeechSynthesisUtterance(text);
+        u.lang = 'zh-CN'; u.rate = 0.85; u.pitch = 1.3;
+        const voices = window.speechSynthesis.getVoices();
+        const zhVoice = voices.find(v => v.lang.includes('zh'));
+        if (zhVoice) u.voice = zhVoice;
+        u.onend = () => { if (btn) btn.classList.remove('playing'); };
+        window.speechSynthesis.speak(u);
+    } else {
+        if (btn) setTimeout(() => btn.classList.remove('playing'), 2000);
+    }
+}
+
+function answerStu(sel) {
+    const btns = document.querySelectorAll('#teach-opts .option-btn');
+    btns.forEach(b=>b.style.pointerEvents='none');
+    const s = students[curStu], q = teachQs[curStu][curStuQ];
+    const chat = document.getElementById('chat-area');
+    
+    if (sel === q.c) {
+        btns[sel].classList.add('correct');
+        GS.teachingScore++;
+        chat.innerHTML += `<div class="chat-bubble teacher"><strong>你：</strong>${q.opts[q.c]}</div>
+            <div class="chat-bubble student"><strong>${s.name}：</strong>哇！我明白了！${q.exp} 谢谢老师！😊</div>`;
+        showFB('✅ 学生听懂了！你教得真好！','success');
+    } else {
+        btns[sel].classList.add('wrong'); btns[q.c].classList.add('correct');
+        chat.innerHTML += `<div class="chat-bubble teacher"><strong>你：</strong>${q.opts[sel]}</div>
+            <div class="chat-bubble student"><strong>${s.name}：</strong>嗯...我好像不太懂...🤔</div>
+            <div class="chat-bubble" style="background:#fff9c4"><strong>📝 正确讲解：</strong>${q.exp}</div>`;
+        showFB('💪 记住正确解释，下次就能教好啦！','info');
+    }
+    curStuQ++;
+    setTimeout(showStuQ, 2500);
+}
+
+// ========== 教学评价 ==========
+function showTeachResult() {
+    const total = teachQs.flat().length;
+    const pct = Math.round(GS.teachingScore / total * 100);
+    let grade, eval_text;
+    if (pct >= 80) { grade='🥇 优秀实习老师'; eval_text='太厉害了！学生们都学会了！你是超棒的老师！'; }
+    else if (pct >= 60) { grade='🥈 合格实习老师'; eval_text='不错哦！大部分学生理解了，继续努力！'; }
+    else { grade='💪 继续努力'; eval_text='还需多练习，再复习一下知识点吧！'; }
+
+    hide('phase2-screen'); show('final-screen');
+    document.getElementById('final-content').innerHTML = `
+        <div class="certificate">
+            <h2>🏅 数学王国小学</h2>
+            <h3>实习老师评价证书</h3>
+            <div class="cert-stamp">📜</div>
+            <p style="font-size:22px;margin:10px 0"><strong>${grade}</strong></p>
+            <p>教学得分：${GS.teachingScore}/${total} (${pct}%)</p>
+            <p style="margin-top:15px;font-size:16px">${eval_text}</p>
+        </div>
+        <div style="margin:20px 0">
+            <h3 style="text-align:center;margin-bottom:15px">📊 学生评价</h3>
+            ${students.map(s=>`<div style="display:flex;align-items:center;padding:10px;border-bottom:1px solid #eee">
+                <span style="font-size:30px;margin-right:15px">${s.emoji}</span>
+                <div><strong>${s.name}</strong><p style="font-size:14px;color:#666">${pct>=80?'老师教得太好了！我全懂了！😊':pct>=60?'老师讲得还不错！':'老师下次加油哦！'}</p></div>
+            </div>`).join('')}
+        </div>
+        <div style="margin:20px 0">
+            <h3 style="text-align:center;margin-bottom:15px">📚 知识点总结</h3>
+            <div class="formula-card">长方形周长 =（长＋宽）× 2</div>
+            <div class="formula-card">正方形周长 = 边长 × 4</div>
+            <div class="formula-card">长方形面积 = 长 × 宽</div>
+            <div class="formula-card">正方形面积 = 边长 × 边长</div>
+            <div class="formula-card">宽 = 周长÷2 - 长 | 宽 = 面积÷长</div>
+            <div class="formula-card">长 = 周长÷2 - 宽 | 长 = 面积÷宽</div>
+            <div class="formula-card">正方形边长 = 周长÷4</div>
+        </div>
+        <div style="text-align:center;margin-top:30px">
+            <button class="btn btn-primary" onclick="restart()">🔄 再玩一次</button>
+        </div>
+    `;
+    if (pct >= 80) createConfetti();
+}
+
+function restart() {
+    GS.score=0; GS.levelsCompleted=[false,false,false,false,false];
+    GS.correctInLevel=0; GS.teachingScore=0;
+    hide('final-screen'); show('start-screen');
+}
+
+// ========== 工具函数 ==========
+function genOptions(correct) {
+    const s = new Set([correct]);
+    while(s.size < 4) {
+        let off = Math.floor(Math.random()*10)-5;
+        if(off===0) off = Math.random()>0.5?1:-1;
+        let w = correct + off;
+        if(w > 0) s.add(w);
+    }
+    return [...s].sort(()=>Math.random()-0.5);
+}
+
+function showFB(msg, type) { const el = document.getElementById('feedback-area'); if(el) el.innerHTML = `<div class="feedback ${type}">${msg}</div>`; }
+function showHint() { const h = document.getElementById('hint-box'); if(h) h.classList.toggle('hidden'); }
+function hide(id) { document.getElementById(id).classList.add('hidden'); }
+function show(id) { document.getElementById(id).classList.remove('hidden'); }
+
+function createConfetti() {
+    const c = document.getElementById('confetti-container');
+    const colors = ['#f44336','#e91e63','#9c27b0','#3f51b5','#2196f3','#4caf50','#ffeb3b','#ff9800'];
+    for(let i=0;i<40;i++){
+        const p = document.createElement('div'); p.className='confetti-piece';
+        p.style.left=Math.random()*100+'%';
+        p.style.backgroundColor=colors[Math.floor(Math.random()*colors.length)];
+        p.style.animationDelay=Math.random()*2+'s';
+        p.style.borderRadius=Math.random()>0.5?'50%':'0';
+        c.appendChild(p);
+    }
+    setTimeout(()=>c.innerHTML='',5000);
+}
+</script>
+</body>
+</html>
