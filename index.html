@@ -205,6 +205,114 @@
 // ========== 游戏状态 ==========
 const GS = { score:0, currentLevel:0, levelsCompleted:[false,false,false,false,false], currentQuestion:0, questionsInLevel:[], correctInLevel:0, teachingScore:0 };
 
+// ========== 薄弱点追踪系统 ==========
+const WeaknessTracker = {
+    records: [], // { level, question, type:'wrong'|'hint'|'viewAnswer', topic, detail, formula }
+    
+    // 记录答错
+    recordWrong(levelIndex, questionIndex, topic, detail, formula) {
+        this.records.push({ level:levelIndex, question:questionIndex, type:'wrong', topic, detail, formula, time:Date.now() });
+    },
+    
+    // 记录查看提示
+    recordHint(levelIndex, questionIndex, topic, detail) {
+        this.records.push({ level:levelIndex, question:questionIndex, type:'hint', topic, detail, time:Date.now() });
+    },
+    
+    // 记录查看答案（动画讲解）
+    recordViewAnswer(levelIndex, questionIndex, topic, detail, formula) {
+        this.records.push({ level:levelIndex, question:questionIndex, type:'viewAnswer', topic, detail, formula, time:Date.now() });
+    },
+    
+    // 记录教学阶段错误
+    recordTeachWrong(studentName, questionText, correctAnswer) {
+        this.records.push({ level:'teaching', type:'teachWrong', topic:'teaching', detail:questionText, correctAnswer, studentName, time:Date.now() });
+    },
+    
+    // 分析薄弱点
+    analyze() {
+        const topicMap = {
+            'perimeter': '周长计算',
+            'area': '面积概念（数格子）',
+            'areaCalc': '面积公式计算',
+            'reverse': '反推（已知周长/面积求边长）',
+            'mixed': '综合运用',
+            'teaching': '教学表达能力'
+        };
+        
+        const formulaMap = {
+            'rect_perimeter': '长方形周长 =（长＋宽）× 2',
+            'square_perimeter': '正方形周长 = 边长 × 4',
+            'rect_area': '长方形面积 = 长 × 宽',
+            'square_area': '正方形面积 = 边长 × 边长',
+            'findW_p': '宽 = 周长 ÷ 2 - 长',
+            'findL_p': '长 = 周长 ÷ 2 - 宽',
+            'findS': '正方形边长 = 周长 ÷ 4',
+            'findW_a': '宽 = 面积 ÷ 长',
+            'findL_a': '长 = 面积 ÷ 宽'
+        };
+        
+        // 按主题分类统计
+        const topicStats = {};
+        this.records.forEach(r => {
+            if (!topicStats[r.topic]) topicStats[r.topic] = { wrong:0, hint:0, viewAnswer:0, teachWrong:0, details:[], formulas:new Set() };
+            if (r.type === 'wrong') topicStats[r.topic].wrong++;
+            if (r.type === 'hint') topicStats[r.topic].hint++;
+            if (r.type === 'viewAnswer') topicStats[r.topic].viewAnswer++;
+            if (r.type === 'teachWrong') topicStats[r.topic].teachWrong++;
+            if (r.detail) topicStats[r.topic].details.push(r.detail);
+            if (r.formula) topicStats[r.topic].formulas.add(r.formula);
+        });
+        
+        // 生成薄弱点列表（按严重程度排序）
+        const weaknesses = [];
+        Object.keys(topicStats).forEach(topic => {
+            const s = topicStats[topic];
+            const severity = s.wrong * 3 + s.viewAnswer * 2 + s.hint * 1 + s.teachWrong * 2;
+            if (severity > 0) {
+                weaknesses.push({
+                    topic,
+                    topicName: topicMap[topic] || topic,
+                    wrongCount: s.wrong,
+                    hintCount: s.hint,
+                    viewAnswerCount: s.viewAnswer,
+                    teachWrongCount: s.teachWrong,
+                    severity,
+                    formulas: [...s.formulas].map(f => formulaMap[f] || f),
+                    details: s.details
+                });
+            }
+        });
+        weaknesses.sort((a,b) => b.severity - a.severity);
+        
+        return { weaknesses, topicMap, totalErrors: this.records.filter(r=>r.type==='wrong'||r.type==='teachWrong').length, totalHints: this.records.filter(r=>r.type==='hint').length };
+    },
+    
+    // 生成建议
+    getSuggestions(weaknesses) {
+        const suggestions = [];
+        weaknesses.forEach(w => {
+            if (w.topic === 'perimeter') {
+                suggestions.push({ icon:'🐑', title:'周长计算需加强', tip:'建议用手指沿着图形边走一圈，感受"周长=绕一圈的距离"。多练习(长+宽)×2的口算。', practice:'找家里的桌子、书本，用尺子量一圈，亲手算周长！' });
+            } else if (w.topic === 'area') {
+                suggestions.push({ icon:'🧱', title:'面积概念需巩固', tip:'面积就是"铺满需要多少块1平方米的砖"。建议用格子纸画长方形，动手数格子。', practice:'拿一张方格纸，画出不同大小的长方形，数一数里面有多少格子！' });
+            } else if (w.topic === 'areaCalc') {
+                suggestions.push({ icon:'🌻', title:'面积公式需多练', tip:'记住：长方形面积=长×宽，正方形面积=边长×边长。建议多做计算练习。', practice:'计算家里各个房间地面的面积，量出长和宽再相乘！' });
+            } else if (w.topic === 'reverse') {
+                suggestions.push({ icon:'🔍', title:'反推能力需提升', tip:'反推题是"知道结果求原因"。建议先回忆原公式，再想"缺的是哪个数"，用除法找出来。', practice:'出一些"已知周长/面积，求边长"的题目反复练习，记住÷2再减、或直接÷的方法！' });
+            } else if (w.topic === 'mixed') {
+                suggestions.push({ icon:'🏆', title:'综合运用需强化', tip:'综合题需要先判断"求什么"（周长还是面积？正推还是反推？），再选对公式。', practice:'每次做题前先问自己：这道题要求的是周长还是面积？是长方形还是正方形？用哪个公式？' });
+            } else if (w.topic === 'teaching') {
+                suggestions.push({ icon:'👨‍🏫', title:'知识表达需练习', tip:'知道答案不够，还要能给别人讲明白。建议用自己的话复述公式的含义。', practice:'试着给爸爸妈妈讲一讲什么是周长、什么是面积，看他们能不能听懂！' });
+            }
+        });
+        return suggestions;
+    },
+    
+    // 重置
+    reset() { this.records = []; }
+};
+
 // ========== 语音功能 ==========
 function speak(text, callback) {
     if ('speechSynthesis' in window) {
@@ -395,6 +503,9 @@ function checkPerimeter(selected, correct, btn, qi) {
         btn.classList.add('wrong');
         showFB('❌ 不太对哦，让我来教你正确的算法！','error');
         const q = GS.questionsInLevel[qi];
+        const formulaType = q.type === 'rect' ? 'rect_perimeter' : 'square_perimeter';
+        WeaknessTracker.recordWrong(GS.currentLevel, qi, 'perimeter', q.scene, formulaType);
+        WeaknessTracker.recordViewAnswer(GS.currentLevel, qi, 'perimeter', q.scene, formulaType);
         let steps, shape, result;
         if (q.type === 'rect') {
             shape = `<div style="display:inline-block;border:3px solid #667eea;width:${q.l*20}px;height:${q.w*20}px;position:relative;margin:10px">
@@ -502,6 +613,8 @@ function checkAreaAns(correct, qi) {
     } else {
         showFB('❌ 不太对，让我来教你怎么算！','error');
         const q = GS.questionsInLevel[qi];
+        WeaknessTracker.recordWrong(GS.currentLevel, qi, 'area', q.scene, 'rect_area');
+        WeaknessTracker.recordViewAnswer(GS.currentLevel, qi, 'area', q.scene, 'rect_area');
         setTimeout(() => {
             showAnimExplain({
                 title:'面积怎么算？',
@@ -589,6 +702,9 @@ function checkAreaCalc(selected, correct, btn, qi) {
         btn.classList.add('wrong');
         showFB('❌ 不太对哦，看看正确的计算方法！','error');
         const q = GS.questionsInLevel[qi];
+        const formulaType = q.type === 'rect' ? 'rect_area' : 'square_area';
+        WeaknessTracker.recordWrong(GS.currentLevel, qi, 'areaCalc', q.scene, formulaType);
+        WeaknessTracker.recordViewAnswer(GS.currentLevel, qi, 'areaCalc', q.scene, formulaType);
         let steps;
         if (q.type === 'rect') {
             steps = [`这是一个长方形，长=${q.l}米，宽=${q.w}米`,`面积公式：长 × 宽`,`面积 = ${q.l} × ${q.w} = <strong>${correct} 平方米</strong>`];
@@ -684,6 +800,8 @@ function checkReverse(selected, correct, btn, qi) {
         btn.classList.add('wrong');
         showFB('❌ 推理有误，看看正确的思路！','error');
         const q = GS.questionsInLevel[qi];
+        WeaknessTracker.recordWrong(GS.currentLevel, qi, 'reverse', q.scene, q.type);
+        WeaknessTracker.recordViewAnswer(GS.currentLevel, qi, 'reverse', q.scene, q.type);
         let steps;
         if (q.type==='findW_p') steps=[`已知周长=${q.P}米，长=${q.l}米`,`先算半周长：${q.P}÷2=${q.P/2}米`,`宽=半周长-长=${q.P/2}-${q.l}=<strong>${correct}米</strong>`];
         else if (q.type==='findL_p') steps=[`已知周长=${q.P}米，宽=${q.w}米`,`先算半周长：${q.P}÷2=${q.P/2}米`,`长=半周长-宽=${q.P/2}-${q.w}=<strong>${correct}米</strong>`];
@@ -748,6 +866,8 @@ function checkMixed(selected, correct, btn, qi) {
         btn.classList.add('wrong');
         showFB('❌ 再想想！看看动画讲解~','error');
         const q = GS.questionsInLevel[qi];
+        WeaknessTracker.recordWrong(GS.currentLevel, qi, 'mixed', q.text, 'mixed');
+        WeaknessTracker.recordViewAnswer(GS.currentLevel, qi, 'mixed', q.text, 'mixed');
         setTimeout(() => {
             showAnimExplain({ title:'综合题解析', shape:'', steps:[`题目信息：${q.text}`,`使用公式：${q.example}`,`计算过程：${q.hint}`,`答案是 <strong>${correct}${q.unit}</strong>`], result:`✅ ${q.hint}` });
         }, 800);
@@ -890,6 +1010,7 @@ function answerStu(sel) {
         showFB('✅ 学生听懂了！你教得真好！','success');
     } else {
         btns[sel].classList.add('wrong'); btns[q.c].classList.add('correct');
+        WeaknessTracker.recordTeachWrong(s.name, q.q, q.opts[q.c]);
         chat.innerHTML += `<div class="chat-bubble teacher"><strong>你：</strong>${q.opts[sel]}</div>
             <div class="chat-bubble student"><strong>${s.name}：</strong>嗯...我好像不太懂...🤔</div>
             <div class="chat-bubble" style="background:#fff9c4"><strong>📝 正确讲解：</strong>${q.exp}</div>`;
@@ -908,6 +1029,65 @@ function showTeachResult() {
     else if (pct >= 60) { grade='🥈 合格实习老师'; eval_text='不错哦！大部分学生理解了，继续努力！'; }
     else { grade='💪 继续努力'; eval_text='还需多练习，再复习一下知识点吧！'; }
 
+    // 生成薄弱点分析
+    const analysis = WeaknessTracker.analyze();
+    const suggestions = WeaknessTracker.getSuggestions(analysis.weaknesses);
+    
+    // 生成薄弱点报告HTML
+    let weaknessHTML = '';
+    if (analysis.weaknesses.length > 0) {
+        weaknessHTML = `
+        <div style="margin:25px 0">
+            <h3 style="text-align:center;margin-bottom:15px;color:#e74c3c">⚠️ 知识薄弱点分析</h3>
+            <div style="background:#fff5f5;border-radius:15px;padding:20px;border:2px solid #ffcdd2">
+                <p style="text-align:center;color:#666;margin-bottom:15px;font-size:14px">
+                    本次学习共答错 <strong style="color:#e74c3c">${analysis.totalErrors}</strong> 题，查看提示 <strong style="color:#ff9800">${analysis.totalHints}</strong> 次
+                </p>
+                ${analysis.weaknesses.map((w, i) => `
+                    <div style="background:white;border-radius:12px;padding:15px;margin:10px 0;border-left:4px solid ${w.severity>=6?'#e74c3c':w.severity>=3?'#ff9800':'#ffc107'}">
+                        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+                            <strong style="font-size:16px">${i+1}. ${w.topicName}</strong>
+                            <span style="font-size:12px;padding:3px 10px;border-radius:10px;background:${w.severity>=6?'#ffebee':w.severity>=3?'#fff3e0':'#fffde7'};color:${w.severity>=6?'#c62828':w.severity>=3?'#e65100':'#f57f17'}">
+                                ${w.severity>=6?'❗ 需重点复习':w.severity>=3?'⚡ 需加强练习':'💡 稍加注意'}
+                            </span>
+                        </div>
+                        <div style="font-size:13px;color:#666;display:flex;gap:15px;flex-wrap:wrap">
+                            ${w.wrongCount > 0 ? `<span>❌ 答错 ${w.wrongCount} 次</span>` : ''}
+                            ${w.hintCount > 0 ? `<span>💡 看提示 ${w.hintCount} 次</span>` : ''}
+                            ${w.viewAnswerCount > 0 ? `<span>📖 看答案 ${w.viewAnswerCount} 次</span>` : ''}
+                            ${w.teachWrongCount > 0 ? `<span>👨‍🏫 教学失误 ${w.teachWrongCount} 次</span>` : ''}
+                        </div>
+                        ${w.formulas.length > 0 ? `<div style="margin-top:8px;font-size:13px;color:#555;background:#f8f9fa;padding:8px 12px;border-radius:8px">📐 相关公式：${w.formulas.join('、')}</div>` : ''}
+                    </div>
+                `).join('')}
+            </div>
+        </div>
+        
+        <div style="margin:25px 0">
+            <h3 style="text-align:center;margin-bottom:15px;color:#2e7d32">📝 针对性提高建议</h3>
+            <div style="background:#e8f5e9;border-radius:15px;padding:20px;border:2px solid #c8e6c9">
+                ${suggestions.map(s => `
+                    <div style="background:white;border-radius:12px;padding:15px;margin:10px 0">
+                        <div style="font-size:18px;margin-bottom:8px">${s.icon} <strong>${s.title}</strong></div>
+                        <p style="font-size:14px;color:#555;margin-bottom:8px">💭 ${s.tip}</p>
+                        <div style="background:#f1f8e9;border-radius:8px;padding:10px 15px;font-size:13px;color:#33691e">
+                            🎯 <strong>练习方法：</strong>${s.practice}
+                        </div>
+                    </div>
+                `).join('')}
+            </div>
+        </div>`;
+    } else {
+        weaknessHTML = `
+        <div style="margin:25px 0;text-align:center">
+            <div style="background:#e8f5e9;border-radius:15px;padding:30px;border:2px solid #c8e6c9">
+                <span style="font-size:50px">🌟</span>
+                <h3 style="color:#2e7d32;margin:10px 0">全部答对！零失误！</h3>
+                <p style="color:#555">你对周长和面积的知识掌握得非常扎实，真棒！</p>
+            </div>
+        </div>`;
+    }
+
     hide('phase2-screen'); show('final-screen');
     document.getElementById('final-content').innerHTML = `
         <div class="certificate">
@@ -915,9 +1095,10 @@ function showTeachResult() {
             <h3>实习老师评价证书</h3>
             <div class="cert-stamp">📜</div>
             <p style="font-size:22px;margin:10px 0"><strong>${grade}</strong></p>
-            <p>教学得分：${GS.teachingScore}/${total} (${pct}%)</p>
+            <p>培训得分：${GS.score}分 | 教学得分：${GS.teachingScore}/${total} (${pct}%)</p>
             <p style="margin-top:15px;font-size:16px">${eval_text}</p>
         </div>
+        
         <div style="margin:20px 0">
             <h3 style="text-align:center;margin-bottom:15px">📊 学生评价</h3>
             ${students.map(s=>`<div style="display:flex;align-items:center;padding:10px;border-bottom:1px solid #eee">
@@ -925,6 +1106,9 @@ function showTeachResult() {
                 <div><strong>${s.name}</strong><p style="font-size:14px;color:#666">${pct>=80?'老师教得太好了！我全懂了！😊':pct>=60?'老师讲得还不错！':'老师下次加油哦！'}</p></div>
             </div>`).join('')}
         </div>
+        
+        ${weaknessHTML}
+        
         <div style="margin:20px 0">
             <h3 style="text-align:center;margin-bottom:15px">📚 知识点总结</h3>
             <div class="formula-card">长方形周长 =（长＋宽）× 2</div>
@@ -945,6 +1129,7 @@ function showTeachResult() {
 function restart() {
     GS.score=0; GS.levelsCompleted=[false,false,false,false,false];
     GS.correctInLevel=0; GS.teachingScore=0;
+    WeaknessTracker.reset();
     hide('final-screen'); show('start-screen');
 }
 
@@ -961,7 +1146,18 @@ function genOptions(correct) {
 }
 
 function showFB(msg, type) { const el = document.getElementById('feedback-area'); if(el) el.innerHTML = `<div class="feedback ${type}">${msg}</div>`; }
-function showHint() { const h = document.getElementById('hint-box'); if(h) h.classList.toggle('hidden'); }
+function showHint() { 
+    const h = document.getElementById('hint-box'); 
+    if(h) { 
+        const wasHidden = h.classList.contains('hidden');
+        h.classList.toggle('hidden'); 
+        // 首次展开时记录
+        if (wasHidden) {
+            const topic = levels[GS.currentLevel] ? levels[GS.currentLevel].topic : 'unknown';
+            WeaknessTracker.recordHint(GS.currentLevel, GS.currentQuestion, topic, '查看了提示');
+        }
+    } 
+}
 function hide(id) { document.getElementById(id).classList.add('hidden'); }
 function show(id) { document.getElementById(id).classList.remove('hidden'); }
 
