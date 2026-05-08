@@ -899,9 +899,9 @@ function backToLevels() {
 
 // ========== 第二阶段：模拟教学 ==========
 const students = [
-    { name:'小明', emoji:'👦', style:'爱问"为什么"', voicePitch:1.3 },
-    { name:'小红', emoji:'👧', style:'爱问"怎么算"', voicePitch:1.5 },
-    { name:'小强', emoji:'🧑', style:'爱问"如果变了呢"', voicePitch:1.1 }
+    { name:'小明', emoji:'👦', style:'爱问"为什么"', voicePitch:1.7 },
+    { name:'小红', emoji:'👧', style:'爱问"怎么算"', voicePitch:2.0 },
+    { name:'小强', emoji:'🧑', style:'爱问"如果变了呢"', voicePitch:1.5 }
 ];
 
 const teachQs = [
@@ -964,7 +964,7 @@ function showStuQ() {
     document.getElementById('teaching-content').innerHTML = `
         <div style="text-align:center;margin-bottom:15px">
             <span style="font-size:50px">${s.emoji}</span>
-            <h3>${s.name} 举手提问 <button class="voice-btn" id="voice-btn" onclick="playVoice('${q.q.replace(/'/g,"\\'")}',this)">🔊</button></h3>
+            <h3>${s.name} 举手提问 <button class="voice-btn" id="voice-btn" onclick="playVoice('${q.q.replace(/'/g,"\\'")}',this,${s.voicePitch})">🔊</button></h3>
             <span style="font-size:13px;color:#666;background:#f0f0f0;padding:3px 10px;border-radius:10px">${s.style}</span>
         </div>
         <div class="chat-area" id="chat-area">
@@ -976,19 +976,25 @@ function showStuQ() {
         </div>
         <div id="feedback-area"></div>
     `;
-    // 自动播放语音
-    setTimeout(() => playVoice(q.q, document.getElementById('voice-btn')), 500);
+    // 自动播放语音（使用学生独特的音调）
+    setTimeout(() => playVoice(q.q, document.getElementById('voice-btn'), s.voicePitch), 500);
 }
 
-function playVoice(text, btn) {
+function playVoice(text, btn, customPitch) {
     if (btn) { btn.classList.add('playing'); }
     if ('speechSynthesis' in window) {
         window.speechSynthesis.cancel();
         const u = new SpeechSynthesisUtterance(text);
-        u.lang = 'zh-CN'; u.rate = 0.85; u.pitch = 1.3;
+        u.lang = 'zh-CN'; 
+        u.rate = 1.05;   // 小孩说话稍快一些，更活泼
+        u.pitch = customPitch || 1.8;   // 高音调，听起来更可爱童真
+        u.volume = 0.9;
         const voices = window.speechSynthesis.getVoices();
+        // 优先选择小孩/童声/女声，让声音更可爱
+        const childVoice = voices.find(v => v.lang.includes('zh') && (v.name.toLowerCase().includes('child') || v.name.toLowerCase().includes('kid')));
+        const femaleVoice = voices.find(v => v.lang.includes('zh') && (v.name.toLowerCase().includes('female') || v.name.includes('女') || v.name.toLowerCase().includes('ting-ting') || v.name.toLowerCase().includes('sinji')));
         const zhVoice = voices.find(v => v.lang.includes('zh'));
-        if (zhVoice) u.voice = zhVoice;
+        u.voice = childVoice || femaleVoice || zhVoice || null;
         u.onend = () => { if (btn) btn.classList.remove('playing'); };
         window.speechSynthesis.speak(u);
     } else {
